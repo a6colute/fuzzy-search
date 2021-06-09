@@ -5,7 +5,7 @@ class FuzzySearch
     public string $encoding = 'utf8';
     private array $wordList = [];
     private array $variants = [];
-    private string $specialSymbol = '*';
+    private int $maxErrorCount = 0;
 
     /**
      * @param string $word
@@ -24,6 +24,15 @@ class FuzzySearch
     }
 
     /**
+     * @param string $word
+     * @return bool
+     */
+    private function checkNumber(string $word): bool
+    {
+        return preg_replace('/[0-9]+/u', '', $word) === '';
+    }
+
+    /**
      * @param array $word
      * @param array $searchWord
      * @return bool
@@ -34,25 +43,39 @@ class FuzzySearch
         $searchLength = count($searchWord);
         $success = false;
 
+        if ($this->maxErrorCount >= $searchLength) {
+            return true;
+        }
+
         $i = 0;
         do {
             $firstSymbol = $searchWord[$i];
             $firstSymbolPos = $i;
             $i++;
-        } while ($firstSymbol === $this->specialSymbol && $i < $searchLength);
+        } while (!$this->checkNumber($firstSymbol) && !in_array($firstSymbol, $word, true) && $i < $this->maxErrorCount);
 
         foreach ($word as $pos => $symbol) {
             if ($symbol === $firstSymbol) {
+                $errors = $firstSymbolPos;
+
                 foreach ($searchWord as $searchPos => $searchSymbol) {
+                    if ($pos + $searchPos - $firstSymbolPos > $length - 1) {
+                        break;
+                    }
+
                     if ($searchPos < $firstSymbolPos) {
                         continue;
                     }
 
-                    if ($searchSymbol !== $this->specialSymbol && ($pos + $searchPos - $firstSymbolPos > $length - 1 || $word[$pos + $searchPos - $firstSymbolPos] !== $searchSymbol)) {
-                        break;
+                    if ($word[$pos + $searchPos - $firstSymbolPos] !== $searchSymbol) {
+                        if ($this->checkNumber($firstSymbol)) {
+                            break;
+                        }
+
+                        $errors++;
                     }
 
-                    if ($searchPos === $searchLength - 1) {
+                    if ($searchPos === $searchLength - 1 && $errors <= $this->maxErrorCount) {
                         $success = true;
                         break;
                     }
@@ -68,38 +91,11 @@ class FuzzySearch
     }
 
     /**
-     * @param array $word
-     * @param int $maxErrorCount
-     * @param int $depth
-     * @param int $position
-     */
-    private function createVariant(array $word, int $maxErrorCount, int $depth = 0, int $position = 0): void
-    {
-        $length = count($word);
-        $depth++;
-        for ($i = $position; $i < $length; $i++) {
-            $newWord = $word;
-            $newWord[$i] = $this->specialSymbol;
-
-            if ($depth === $maxErrorCount) {
-                $this->variants[] = implode('', $newWord);
-            } elseif ($i + 1 < $length) {
-                $this->createVariant($newWord, $maxErrorCount, $depth, $i + 1);
-            }
-        }
-    }
-
-    /**
      * @param string $word
-     * @param int $maxErrorCount
      */
-    private function getWordVariants(string $word, int $maxErrorCount): void
+    private function getWordVariants(string $word): void
     {
         $this->variants[] = $word;
-        $wordArray = $this->str2arr($word);
-        for ($errorCount = 1; $errorCount <= $maxErrorCount; $errorCount++) {
-            $this->createVariant($wordArray, $errorCount);
-        }
     }
 
     /**
@@ -115,11 +111,12 @@ class FuzzySearch
      * @param int $maxErrorCount
      * @return array
      */
-    public function search(string $searchWord, int $maxErrorCount): array
+    public function search(string $searchWord, int $maxErrorCount = 0): array
     {
+        $this->maxErrorCount = $maxErrorCount;
         $result = [];
 
-        $this->getWordVariants($searchWord, $maxErrorCount);
+        $this->getWordVariants($searchWord);
 
         foreach ($this->variants as $variant) {
             $searchWordArray = $this->str2arr($variant);
