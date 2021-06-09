@@ -2,15 +2,92 @@
 
 class FuzzySearch
 {
+    public string $encoding = 'utf8';
     private array $wordList = [];
+    private array $variants = [];
 
     /**
      * @param string $word
-     * @return string[]
+     * @return array
      */
-    private function getWordVariants(string $word, int $maxErrorCount): array
+    private function str2arr(string $word): array
     {
+        $wordArray = [];
 
+        $length = mb_strlen($word, $this->encoding);
+        for ($i = 0; $i < $length; $i++) {
+            $wordArray[] = mb_substr($word, $i, 1);
+        }
+
+        return $wordArray;
+    }
+
+    /**
+     * @param array $word
+     * @param array $searchWord
+     * @return bool
+     */
+    private function compare(array $word, array $searchWord): bool
+    {
+        $firstSymbol = $searchWord[0];
+        $length = count($word);
+        $searchLength = count($searchWord);
+        $success = false;
+        foreach ($word as $pos => $symbol) {
+            if ($symbol === $firstSymbol) {
+                foreach ($searchWord as $searchPos => $searchSymbol) {
+                    if ($searchSymbol !== '*' && ($pos + $searchPos > $length - 1 || $word[$pos + $searchPos] !== $searchSymbol)) {
+                        break;
+                    }
+
+                    if ($searchPos === $searchLength - 1) {
+                        $success = true;
+                        break;
+                    }
+                }
+            }
+
+            if ($success) {
+                break;
+            }
+        }
+
+        return $success;
+    }
+
+    /**
+     * @param array $word
+     * @param int $maxErrorCount
+     * @param int $depth
+     * @param int $position
+     */
+    private function createVariant(array $word, int $maxErrorCount, int $depth = 0, int $position = 0): void
+    {
+        $length = count($word);
+        $depth++;
+        for ($i = $position; $i < $length; $i++) {
+            $newWord = $word;
+            $newWord[$i] = '*';
+
+            if ($depth === $maxErrorCount) {
+                $this->variants[] = implode('', $newWord);
+            } elseif ($i + 1 < $length) {
+                $this->createVariant($newWord, $maxErrorCount, $depth, $i + 1);
+            }
+        }
+    }
+
+    /**
+     * @param string $word
+     * @param int $maxErrorCount
+     */
+    private function getWordVariants(string $word, int $maxErrorCount): void
+    {
+        $this->variants[] = $word;
+        $wordArray = $this->str2arr($word);
+        for ($errorCount = 1; $errorCount <= $maxErrorCount; $errorCount++) {
+            $this->createVariant($wordArray, $errorCount);
+        }
     }
 
     /**
@@ -22,15 +99,27 @@ class FuzzySearch
     }
 
     /**
-     * @param string $word
+     * @param string $searchWord
      * @param int $maxErrorCount
      * @return array
      */
-    public function search(string $word, int $maxErrorCount): array
+    public function search(string $searchWord, int $maxErrorCount): array
     {
-        $variants = $this->getWordVariants($word, $maxErrorCount);
-        foreach ($variants as $variant) {
+        $result = [];
 
+        $this->getWordVariants($searchWord, $maxErrorCount);
+
+        foreach ($this->variants as $variant) {
+            $searchWordArray = $this->str2arr($variant);
+            foreach ($this->wordList as $word) {
+                $wordArray = $this->str2arr($word);
+
+                if ($this->compare($wordArray, $searchWordArray)) {
+                    $result[] = $word;
+                }
+            }
         }
+
+        return array_unique($result);
     }
 }
