@@ -5,6 +5,7 @@ class FuzzySearch
     public string $encoding = 'utf8';
     private array $wordList = [];
     private array $variants = [];
+    private string $specialSymbol = '*';
 
     /**
      * @param string $word
@@ -29,14 +30,25 @@ class FuzzySearch
      */
     private function compare(array $word, array $searchWord): bool
     {
-        $firstSymbol = $searchWord[0];
         $length = count($word);
         $searchLength = count($searchWord);
         $success = false;
+
+        $i = 0;
+        do {
+            $firstSymbol = $searchWord[$i];
+            $firstSymbolPos = $i;
+            $i++;
+        } while ($firstSymbol === $this->specialSymbol && $i < $searchLength);
+
         foreach ($word as $pos => $symbol) {
             if ($symbol === $firstSymbol) {
                 foreach ($searchWord as $searchPos => $searchSymbol) {
-                    if ($searchSymbol !== '*' && ($pos + $searchPos > $length - 1 || $word[$pos + $searchPos] !== $searchSymbol)) {
+                    if ($searchPos < $firstSymbolPos) {
+                        continue;
+                    }
+
+                    if ($searchSymbol !== $this->specialSymbol && ($pos + $searchPos - $firstSymbolPos > $length - 1 || $word[$pos + $searchPos - $firstSymbolPos] !== $searchSymbol)) {
                         break;
                     }
 
@@ -67,7 +79,7 @@ class FuzzySearch
         $depth++;
         for ($i = $position; $i < $length; $i++) {
             $newWord = $word;
-            $newWord[$i] = '*';
+            $newWord[$i] = $this->specialSymbol;
 
             if ($depth === $maxErrorCount) {
                 $this->variants[] = implode('', $newWord);
