@@ -3,6 +3,7 @@
 class FuzzySearch
 {
     public string $encoding = 'utf8';
+    public bool $fuzzyNumbers = false;
     private array $wordList = [];
     private array $variants = [];
     private int $maxErrorCount = 0;
@@ -30,6 +31,10 @@ class FuzzySearch
      */
     private function checkNumber(string $word): bool
     {
+        if ($this->fuzzyNumbers) {
+            return false;
+        }
+
         return preg_replace('/[0-9]+/u', '', $word) === '';
     }
 
