@@ -6,6 +6,7 @@ class FuzzySearch
     private array $wordList = [];
     private array $variants = [];
     private int $maxErrorCount = 0;
+    private int $errors = 0;
 
     /**
      * @param string $word
@@ -56,7 +57,7 @@ class FuzzySearch
 
         foreach ($word as $pos => $symbol) {
             if ($symbol === $firstSymbol) {
-                $errors = $firstSymbolPos;
+                $this->errors = $firstSymbolPos;
 
                 foreach ($searchWord as $searchPos => $searchSymbol) {
                     if ($pos + $searchPos - $firstSymbolPos > $length - 1) {
@@ -72,10 +73,10 @@ class FuzzySearch
                             break;
                         }
 
-                        $errors++;
+                        $this->errors++;
                     }
 
-                    if ($searchPos === $searchLength - 1 && $errors <= $this->maxErrorCount) {
+                    if ($searchPos === $searchLength - 1 && $this->errors <= $this->maxErrorCount) {
                         $success = true;
                         break;
                     }
@@ -114,7 +115,9 @@ class FuzzySearch
     public function search(string $searchWord, int $maxErrorCount = 0): array
     {
         $this->maxErrorCount = $maxErrorCount;
-        $result = [];
+        for ($i = 0; $i <= $maxErrorCount; $i++) {
+            $words[$i] = [];
+        }
 
         $this->getWordVariants($searchWord);
 
@@ -124,9 +127,14 @@ class FuzzySearch
                 $wordArray = $this->str2arr($word);
 
                 if ($this->compare($wordArray, $searchWordArray)) {
-                    $result[] = $word;
+                    $words[$this->errors][] = $word;
                 }
             }
+        }
+
+        $result = [];
+        foreach ($words as $v) {
+            $result = array_merge($result, $v);
         }
 
         return array_unique($result);
