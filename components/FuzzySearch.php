@@ -4,6 +4,7 @@ class FuzzySearch
 {
     public string $encoding = 'utf8';
     public bool $fuzzyNumbers = false;
+    public bool $partialSearch = false;
     private array $wordList = [];
     private array $variants = [];
     private int $maxErrorCount = 0;
@@ -66,6 +67,10 @@ class FuzzySearch
 
                 foreach ($searchWord as $searchPos => $searchSymbol) {
                     if ($pos + $searchPos - $firstSymbolPos > $length - 1) {
+                        break;
+                    }
+
+                    if (!$this->partialSearch && $pos + $searchPos - $firstSymbolPos > $searchLength - 1) {
                         break;
                     }
 
