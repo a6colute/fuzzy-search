@@ -62,10 +62,9 @@ class FuzzySearch
         return abs(($searchWordLength - abs($wordLength - $searchWordLength))/$searchWordLength) ** $this->wordLengthWeight;
     }
 
-    private function calculatePositionWeight(int $position, int $wordLength, int $searchWordLength): float
+    private function calculatePositionWeight(int $position, int $searchWordLength): float
     {
-        $positionDifference = $position + abs($wordLength - $searchWordLength - $position);
-        return abs(($searchWordLength - $positionDifference)/$searchWordLength) ** $this->wordPositionWeight;
+        return abs(($searchWordLength - $position)/$searchWordLength) ** $this->wordPositionWeight;
     }
 
     /**
@@ -115,7 +114,7 @@ class FuzzySearch
                         $relevancy =
                             $this->calculateErrorWeight($searchLength, $errors) *
                             $this->calculateLengthDifferenceWeight($length, $searchLength) *
-                            $this->calculatePositionWeight($pos, $length, $searchLength)
+                            $this->calculatePositionWeight($pos, $searchLength)
                         ;
                         break;
                     }
@@ -174,6 +173,6 @@ class FuzzySearch
 
         //sort($words);
 
-        return array_unique($words);
+        return $words;
     }
 }
