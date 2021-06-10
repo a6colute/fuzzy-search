@@ -62,6 +62,11 @@ class FuzzySearch
         return abs(($searchWordLength - abs($wordLength - $searchWordLength))/$searchWordLength) ** $this->wordLengthWeight;
     }
 
+    /**
+     * @param int $position
+     * @param int $searchWordLength
+     * @return float
+     */
     private function calculatePositionWeight(int $position, int $searchWordLength): float
     {
         return abs(($searchWordLength - $position)/$searchWordLength) ** $this->wordPositionWeight;
