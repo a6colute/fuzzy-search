@@ -68,7 +68,7 @@ class FuzzySearch
             return ((($searchWordLength -1) / $difference) / $searchWordLength) ** $this->wordLengthWeight;
         }
 
-        return abs(($searchWordLength - $difference)/$searchWordLength) ** $this->wordLengthWeight;
+        return (($searchWordLength - $difference)/$searchWordLength) ** $this->wordLengthWeight;
     }
 
     /**
@@ -82,7 +82,7 @@ class FuzzySearch
             return ((($searchWordLength - 1) / $position) / $searchWordLength) ** $this->wordLengthWeight;
         }
 
-        return abs(($searchWordLength - $position)/$searchWordLength) ** $this->wordPositionWeight;
+        return (($searchWordLength - $position)/$searchWordLength) ** $this->wordPositionWeight;
     }
 
     /**
