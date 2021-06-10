@@ -154,7 +154,7 @@ class FuzzySearch
     public function search(string $searchWord, int $maxErrorCount = 0): array
     {
         $this->maxErrorCount = $maxErrorCount;
-        $words[] = [];
+        $words = [];
 
         $this->getWordVariants($searchWord);
 
