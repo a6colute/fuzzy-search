@@ -8,7 +8,10 @@ class FuzzySearch
     private array $wordList = [];
     private array $variants = [];
     private int $maxErrorCount = 0;
-    private int $errors = 0;
+    public float $errorWeight = 2;
+    public float $wordLengthWeight = 2;
+    public float $wordPositionWeight = 2;
+    public float $minRelevancy = 0.1;
 
     /**
      * @param string $word
@@ -40,19 +43,41 @@ class FuzzySearch
     }
 
     /**
+     * @param int $wordLength
+     * @param int $errorCount
+     * @return float
+     */
+    private function calculateErrorWeight(int $wordLength, int $errorCount): float
+    {
+        return abs(($wordLength - $errorCount)/$wordLength) ** $this->errorWeight;
+    }
+
+    /**
+     * @param int $wordLength
+     * @param int $searchWordLength
+     * @return float
+     */
+    private function calculateLengthDifferenceWeight(int $wordLength, int $searchWordLength): float
+    {
+        return abs(($searchWordLength - abs($wordLength - $searchWordLength))/$searchWordLength) ** $this->wordLengthWeight;
+    }
+
+    private function calculatePositionWeight(int $position, int $wordLength, int $searchWordLength): float
+    {
+        $positionDifference = $position + abs($wordLength - $searchWordLength - $position);
+        return abs(($searchWordLength - $positionDifference)/$searchWordLength) ** $this->wordPositionWeight;
+    }
+
+    /**
      * @param array $word
      * @param array $searchWord
-     * @return bool
+     * @return float
      */
-    private function compare(array $word, array $searchWord): bool
+    private function compare(array $word, array $searchWord): float
     {
         $length = count($word);
         $searchLength = count($searchWord);
-        $success = false;
-
-        if ($this->maxErrorCount >= $searchLength) {
-            return true;
-        }
+        $relevancy = 0;
 
         $i = 0;
         do {
@@ -63,7 +88,7 @@ class FuzzySearch
 
         foreach ($word as $pos => $symbol) {
             if ($symbol === $firstSymbol) {
-                $this->errors = $firstSymbolPos;
+                $errors = $firstSymbolPos;
 
                 foreach ($searchWord as $searchPos => $searchSymbol) {
                     if ($pos + $searchPos - $firstSymbolPos > $length - 1) {
@@ -83,22 +108,26 @@ class FuzzySearch
                             break;
                         }
 
-                        $this->errors++;
+                        $errors++;
                     }
 
-                    if ($searchPos === $searchLength - 1 && $this->errors <= $this->maxErrorCount) {
-                        $success = true;
+                    if ($searchPos === $searchLength - 1 && $errors <= $this->maxErrorCount) {
+                        $relevancy =
+                            $this->calculateErrorWeight($searchLength, $errors) *
+                            $this->calculateLengthDifferenceWeight($length, $searchLength) *
+                            $this->calculatePositionWeight($pos, $length, $searchLength)
+                        ;
                         break;
                     }
                 }
             }
 
-            if ($success) {
+            if ($relevancy !== 0) {
                 break;
             }
         }
 
-        return $success;
+        return $relevancy;
     }
 
     /**
@@ -125,9 +154,7 @@ class FuzzySearch
     public function search(string $searchWord, int $maxErrorCount = 0): array
     {
         $this->maxErrorCount = $maxErrorCount;
-        for ($i = 0; $i <= $maxErrorCount; $i++) {
-            $words[$i] = [];
-        }
+        $words[] = [];
 
         $this->getWordVariants($searchWord);
 
@@ -136,17 +163,17 @@ class FuzzySearch
             foreach ($this->wordList as $word) {
                 $wordArray = $this->str2arr($word);
 
-                if ($this->compare($wordArray, $searchWordArray)) {
-                    $words[$this->errors][] = $word;
+                if (
+                    ($relevancy = $this->compare($wordArray, $searchWordArray)) &&
+                    $this->minRelevancy <= $relevancy
+                ) {
+                    $words[$word] = $relevancy;
                 }
             }
         }
 
-        $result = [];
-        foreach ($words as $v) {
-            $result = array_merge($result, $v);
-        }
+        //sort($words);
 
-        return array_unique($result);
+        return array_unique($words);
     }
 }
